@@ -1,0 +1,65 @@
+version: '3.8'
+
+services:
+  chess-game:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chess-game:latest
+    container_name: chess-game
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+    volumes:
+      # X11 socket for display (Linux)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      # For macOS, use XQuartz
+      # - ~/.Xauthority:/home/appuser/.Xauthority:rw
+    networks:
+      - chess-net
+    restart: unless-stopped
+    # For development, mount source code
+    # volumes:
+    #   - ./src:/app/src:ro
+    #   - ./Chess Game with Pygames/images:/app/Chess Game with Pygames/images:ro
+
+  # Development container with hot reload
+  chess-game-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chess-game:dev
+    container_name: chess-game-dev
+    environment:
+      - DISPLAY=${DISPLAY:-:0}
+      - PYTHONDONTWRITEBYTECODE=1
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./Chess Game with Pygames/images:/app/Chess\ Game\ with\ Pygames/images:ro
+    networks:
+      - chess-net
+    profiles:
+      - dev
+    command: ["python", "-m", "chess_game.main"]
+
+  # Test runner
+  test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chess-game:test
+    container_name: chess-game-test
+    volumes:
+      - ./src:/app/src:ro
+      - ./tests:/app/tests:ro
+      - ./coverage:/app/coverage:rw
+    networks:
+      - chess-net
+    profiles:
+      - test
+    command: ["pytest", "-v", "--cov=chess_game", "--cov-report=html:coverage"]
+
+networks:
+  chess-net:
+    driver: bridge
